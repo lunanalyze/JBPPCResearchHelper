@@ -19,8 +19,10 @@ Set-Location $Root
   --onefile `
   --noconsole `
   --name PPCResearchHelper `
+  --icon "PPC.ico" `
   --add-data "report_prompt.md;." `
   --add-data "ppc_report_template.docx;." `
+  --add-data "PPC.ico;." `
   app.py
 if ($LASTEXITCODE -ne 0) {
   throw "PyInstaller failed with exit code $LASTEXITCODE"

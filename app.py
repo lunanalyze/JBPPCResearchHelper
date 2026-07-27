@@ -8,6 +8,7 @@ import json
 import os
 import re
 import shutil
+import socket
 import sys
 import threading
 import time
@@ -38,6 +39,7 @@ PORT = 8766
 KEY_PATH = paths.CONFIG_DIR / "openai_key.bin"
 TEMPLATE_PATH = paths.RESOURCES_DIR / "ppc_report_template.docx"
 PROMPT_PATH = paths.RESOURCES_DIR / "report_prompt.md"
+FAVICON_PATH = paths.APP_DIR / "PPC.ico"
 
 paths.ensure_app_dirs()
 paths.copy_default_resource("ppc_report_template.docx")
@@ -59,6 +61,7 @@ HTML = r"""<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>PPC 조사연구 도우미</title>
+<link rel="icon" href="/favicon.ico" type="image/x-icon">
 <style>
   :root {
     color-scheme: light;
@@ -689,7 +692,7 @@ HTML = r"""<!doctype html>
       </div>
       <div class="button-row">
         <label style="flex:1 1 150px">수집 대상<select id="target"><option value="all">전체</option><option value="cambodia">캄보디아</option><option value="vietnam">베트남</option></select></label>
-        <label style="width:130px">사이트별 건수<input id="maxPerSource" type="number" min="1" max="30" value="10"></label>
+        <label style="width:130px">사이트별 건수<input id="maxPerSource" type="number" min="1" max="100" value="10"></label>
       </div>
     </div>
   </section>
@@ -786,7 +789,17 @@ function visibleItems(){
   return items
     .map((it, idx) => ({it, idx}))
     .filter(({it}) => activeTab === "전체" || it.category === activeTab)
-    .filter(({it}) => rowPassesFilters(it));
+    .filter(({it}) => rowPassesFilters(it))
+    .sort((a, b) => categorySortValue(a.it) - categorySortValue(b.it) || dateSortValue(a.it) - dateSortValue(b.it));
+}
+function categorySortValue(item){
+  const idx = sections.indexOf(item.category || "");
+  return idx >= 0 ? idx : 999;
+}
+function dateSortValue(item){
+  const value = String(item.published_date || "");
+  const time = value ? Date.parse(value) : NaN;
+  return Number.isNaN(time) ? 8640000000000000 : time;
 }
 function rowPassesFilters(item){
   for(const [key, selected] of Object.entries(columnFilters)){
@@ -1160,6 +1173,13 @@ def openai_json_request(path: str, payload: dict, api_key: str, timeout: int = 2
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", "replace")
         raise RuntimeError(f"OpenAI API error {exc.code}: {detail}") from exc
+    except (TimeoutError, socket.timeout) as exc:
+        raise TimeoutError("OpenAI API 응답 시간 초과") from exc
+    except urllib.error.URLError as exc:
+        reason = getattr(exc, "reason", None)
+        if isinstance(reason, (TimeoutError, socket.timeout)) or "timed out" in str(reason).lower():
+            raise TimeoutError("OpenAI API 응답 시간 초과") from exc
+        raise
 
 
 def extract_response_text(response: dict) -> str:
@@ -1216,11 +1236,12 @@ def default_report_title(today: dt.date | None = None) -> str:
 
 
 def row_for_client(item: collector.Item, selected: bool = True) -> dict:
+    source_name = collector.display_source_name(item.source_name)
     return {
         "selected": selected,
         "category": item.category,
-        "source_name": collector.display_source_name(item.source_name),
-        "title": item.title,
+        "source_name": source_name,
+        "title": collector.clean_article_title(item.title, source_name),
         "url": item.url,
         "published_date": collector.normalize_date(item.published_date) or item.published_date,
         "published_mm_dd": item.published_mm_dd,
@@ -1230,10 +1251,11 @@ def row_for_client(item: collector.Item, selected: bool = True) -> dict:
 
 
 def item_from_client(raw: dict) -> collector.Item:
+    source_name = str(raw.get("source_name") or "")
     return collector.Item(
         category=str(raw.get("category") or ""),
-        source_name=str(raw.get("source_name") or ""),
-        title=str(raw.get("title") or ""),
+        source_name=source_name,
+        title=collector.clean_article_title(str(raw.get("title") or ""), source_name),
         url=str(raw.get("url") or ""),
         published_date=str(raw.get("published_date") or ""),
         notes=str(raw.get("notes") or ""),
@@ -1241,7 +1263,24 @@ def item_from_client(raw: dict) -> collector.Item:
     )
 
 
+def sort_items_by_date_asc(items: list[collector.Item]) -> list[collector.Item]:
+    section_order = {
+        "캄보디아 금융/경제": 0,
+        "캄보디아 정치/사회": 1,
+        "베트남 금융/경제": 2,
+        "베트남 정치/사회": 3,
+    }
+
+    def key(pair):
+        index, item = pair
+        parsed = collector.parse_date(item.published_date)
+        return (section_order.get(item.category, 999), parsed or dt.date.max, index)
+
+    return [item for _, item in sorted(enumerate(items), key=key)]
+
+
 def build_report_base(items: list[collector.Item]) -> dict:
+    items = sort_items_by_date_asc(items)
     groups = {
         "CAMBODIA_ECONOMY_SECTION": [],
         "CAMBODIA_POLITICS_SECTION": [],
@@ -1937,7 +1976,7 @@ def run_collect_job(job_id: str, data: dict) -> None:
         end_date = parse_iso_date(data.get("end_date")) or dt.date.today()
         start_date = parse_iso_date(data.get("start_date")) or (end_date - dt.timedelta(days=14))
         target = str(data.get("target") or "all")
-        max_per_source = max(1, min(int(data.get("max_per_source") or 10), 30))
+        max_per_source = max(1, min(int(data.get("max_per_source") or 10), 100))
         update_collect_job(
             job_id,
             message="자료 수집 준비 중",
@@ -2029,6 +2068,8 @@ class Handler(BaseHTTPRequestHandler):
         parsed = urlparse(self.path)
         if parsed.path == "/":
             self.send_text(HTML, "text/html; charset=utf-8")
+        elif parsed.path == "/favicon.ico":
+            self.handle_favicon()
         elif parsed.path == "/collect-status":
             self.handle_collect_status(parsed)
         elif parsed.path == "/generate-report-status":
@@ -2064,6 +2105,17 @@ class Handler(BaseHTTPRequestHandler):
                 self.send_json({"ok": False, "error": "not found"}, 404)
         except Exception as exc:
             self.send_json({"ok": False, "error": str(exc)}, 500)
+
+    def handle_favicon(self) -> None:
+        if not FAVICON_PATH.exists():
+            self.send_json({"ok": False, "error": "favicon not found"}, 404)
+            return
+        data = FAVICON_PATH.read_bytes()
+        self.send_response(200)
+        self.send_header("Content-Type", "image/x-icon")
+        self.send_header("Content-Length", str(len(data)))
+        self.end_headers()
+        self.wfile.write(data)
 
     def handle_collect_start(self) -> None:
         data = self.read_json()
@@ -2150,7 +2202,7 @@ class Handler(BaseHTTPRequestHandler):
         end_date = parse_iso_date(data.get("end_date")) or dt.date.today()
         start_date = parse_iso_date(data.get("start_date")) or (end_date - dt.timedelta(days=14))
         target = str(data.get("target") or "all")
-        max_per_source = max(1, min(int(data.get("max_per_source") or 10), 30))
+        max_per_source = max(1, min(int(data.get("max_per_source") or 10), 100))
         run_dir = collector.make_run_dir()
         items = collector.collect_all(
             start_date,

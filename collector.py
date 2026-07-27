@@ -6,6 +6,7 @@ import email.utils
 import html as html_lib
 import json
 import re
+import socket
 import ssl
 import sys
 import time
@@ -129,7 +130,7 @@ class Http:
             try:
                 with self.opener.open(req, timeout=timeout) as resp:
                     return resp.read()
-            except (urllib.error.URLError, TimeoutError, ConnectionResetError) as exc:
+            except (urllib.error.URLError, TimeoutError, socket.timeout, ConnectionResetError) as exc:
                 last_exc = exc
                 time.sleep(0.6 * (attempt + 1))
         assert last_exc is not None
@@ -385,6 +386,17 @@ def fetch_article(http: Http, url: str, referer: str = "") -> tuple[str, str, st
     return clean_text(title), find_date(date + " " + text[:300]), text
 
 
+def is_timeout_error(exc: Exception) -> bool:
+    if isinstance(exc, (TimeoutError, socket.timeout)):
+        return True
+    if isinstance(exc, urllib.error.URLError):
+        reason = getattr(exc, "reason", None)
+        if isinstance(reason, (TimeoutError, socket.timeout)):
+            return True
+        return "timed out" in str(reason).lower()
+    return "timed out" in str(exc).lower()
+
+
 def meta_content(doc, *names: str) -> str:
     for name in names:
         nodes = doc.xpath(f"//meta[@property='{name}' or @name='{name}']/@content")
@@ -469,6 +481,37 @@ def is_better_detail_title(detail_title: str, listing_title: str) -> bool:
     return True
 
 
+def clean_article_title(title: str, source_name: str = "") -> str:
+    text = clean_text(title)
+    if not text:
+        return ""
+    suffix_patterns = [
+        r"\s*>\s*캄보디아인사이트\s*$",
+        r"\s*[-–—|]\s*캄보디아인사이트\s*$",
+        r"\s*[-–—|]\s*캄보디아\s*인사이트\s*$",
+        r"\s*[-–—|]\s*캄푸치아\s*신문\s*$",
+        r"\s*[-–—|]\s*Khmer\s*Times\s*$",
+        r"\s*[-–—|]\s*Phnom\s*Penh\s*Post\s*$",
+        r"\s*[-–—|]\s*phnompenhpost\.com\s*$",
+        r"\s*[-–—|]\s*Vietnam\s*Korea\s*Times\s*$",
+        r"\s*[-–—|]\s*베트남\s*코리아\s*타임즈\s*$",
+        r"\s*[-–—|]\s*시티타임즈\s*$",
+        r"\s*[-–—|]\s*인사이드비나\s*$",
+    ]
+    source = display_source_name(source_name)
+    if source:
+        suffix_patterns.append(rf"\s*[-–—|]\s*{re.escape(source)}\s*$")
+    changed = True
+    while changed:
+        changed = False
+        for pattern in suffix_patterns:
+            new_text = re.sub(pattern, "", text, flags=re.I).strip()
+            if new_text != text:
+                text = new_text
+                changed = True
+    return text.strip(" \t\r\n-–—|>")
+
+
 def display_source_name(source_name: str) -> str:
     if source_name.startswith("캄보디아 인사이트"):
         return "캄보디아 인사이트"
@@ -532,23 +575,23 @@ def collect_source(
     classifier: Callable[[dict], str] | None = None,
 ) -> list[Item]:
     try:
-        doc = parse_doc(http.get(source.url))
+        doc = parse_doc(http.get(source.url, timeout=30, attempts=2))
     except Exception as exc:
-        return [Item("error", source.name, source.name, source.url, notes=f"list failed: {exc}")]
+        return [Item("error", source.name, source.name, source.url, notes=list_failure_note(exc))]
     out: list[Item] = []
     for candidate in extract_listing_candidates(doc, source.url):
         if len(out) >= limit:
             break
         if candidate["date"] and not within_range(candidate["date"], start_date, end_date):
             continue
-        title = candidate["title"]
+        title = clean_article_title(candidate["title"], source.name)
         date = candidate["date"]
         content = ""
         notes = ""
         try:
             detail_title, detail_date, content = fetch_article(http, candidate["url"], source.url)
             if is_better_detail_title(detail_title, title):
-                title = detail_title
+                title = clean_article_title(detail_title, source.name)
             date = detail_date or date
         except Exception as exc:
             notes = detail_failure_note(exc)
@@ -556,19 +599,23 @@ def collect_source(
             continue
         section, confidence, reason = classify_by_rules(source, title, content or candidate["row_text"])
         if confidence < 0.7 and classifier:
-            llm_section = classifier({
-                "source": source.name,
-                "country": source.country,
-                "title": title,
-                "url": candidate["url"],
-                "content": content[:3500],
-                "rule_section": section,
-                "rule_reason": reason,
-            })
-            if llm_section in SECTION_LABELS:
-                section = llm_section
-                reason = f"{reason}; llm:{llm_section}"
-                confidence = 0.9
+            try:
+                llm_section = classifier({
+                    "source": source.name,
+                    "country": source.country,
+                    "title": title,
+                    "url": candidate["url"],
+                    "content": content[:3500],
+                    "rule_section": section,
+                    "rule_reason": reason,
+                })
+                if llm_section in SECTION_LABELS:
+                    section = llm_section
+                    reason = f"{reason}; llm:{llm_section}"
+                    confidence = 0.9
+            except Exception as exc:
+                notes = append_note(notes, classification_failure_note(exc))
+                reason = f"{reason}; llm_failed"
         out.append(Item(
             category=SECTION_LABELS.get(section, section),
             source_name=display_source_name(source.name),
@@ -587,9 +634,35 @@ def collect_source(
 
 
 def detail_failure_note(exc: Exception) -> str:
+    if is_timeout_error(exc):
+        return "상세 페이지 접속 실패: 응답 시간 초과"
     if isinstance(exc, urllib.error.HTTPError):
         return f"상세 페이지 접속 실패: HTTP {exc.code}"
     return f"상세 페이지 접속 실패: {exc}"
+
+
+def list_failure_note(exc: Exception) -> str:
+    if is_timeout_error(exc):
+        return "목록 페이지 접속 실패: 응답 시간 초과"
+    if isinstance(exc, urllib.error.HTTPError):
+        return f"목록 페이지 접속 실패: HTTP {exc.code}"
+    return f"목록 페이지 접속 실패: {exc}"
+
+
+def classification_failure_note(exc: Exception) -> str:
+    if is_timeout_error(exc):
+        return "LLM 분류 보류: 응답 시간 초과"
+    return f"LLM 분류 보류: {exc}"
+
+
+def append_note(current: str, note: str) -> str:
+    current = clean_text(current)
+    note = clean_text(note)
+    if not current:
+        return note
+    if not note:
+        return current
+    return f"{current}; {note}"
 
 
 def collect_all(

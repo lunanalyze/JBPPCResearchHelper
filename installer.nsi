@@ -3,19 +3,20 @@ Name "PPC 조사연구 도우미"
 OutFile "dist\PPCResearchHelperSetup.exe"
 InstallDir "$LOCALAPPDATA\Programs\PPCResearchHelper"
 RequestExecutionLevel user
+Icon "setup_icon.ico"
 
 !define APP_EXE "PPCResearchHelper.exe"
 !define APP_NAME "PPC 조사연구 도우미"
 !define COMPANY_NAME "PPCResearchHelper"
-!define PUBLISHER_NAME "AI"
+!define PUBLISHER_NAME "전북은행 AI혁신부"
 !define APP_DATA_DIR "$LOCALAPPDATA\PPCResearchAutomation"
 
-VIProductVersion "1.0.0.0"
+VIProductVersion "1.0.1.0"
 VIAddVersionKey /LANG=1042 "ProductName" "${APP_NAME}"
 VIAddVersionKey /LANG=1042 "CompanyName" "${PUBLISHER_NAME}"
 VIAddVersionKey /LANG=1042 "FileDescription" "${APP_NAME} 설치 프로그램"
-VIAddVersionKey /LANG=1042 "FileVersion" "1.0.0"
-VIAddVersionKey /LANG=1042 "ProductVersion" "1.0.0"
+VIAddVersionKey /LANG=1042 "FileVersion" "1.0.1"
+VIAddVersionKey /LANG=1042 "ProductVersion" "1.0.1"
 VIAddVersionKey /LANG=1042 "LegalCopyright" "${PUBLISHER_NAME}"
 
 Page directory
@@ -38,6 +39,7 @@ Section "Install"
   SetOutPath "$INSTDIR"
   SetOverwrite on
   File "dist\${APP_EXE}"
+  File "PPC.ico"
 
   CreateDirectory "${APP_DATA_DIR}\resources"
   SetOutPath "${APP_DATA_DIR}\resources"
@@ -46,15 +48,16 @@ Section "Install"
 
   WriteUninstaller "$INSTDIR\Uninstall.exe"
   CreateDirectory "$SMPROGRAMS\${APP_NAME}"
-  CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}"
+  CreateShortcut "$SMPROGRAMS\${APP_NAME}\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\PPC.ico" 0
   CreateShortcut "$SMPROGRAMS\${APP_NAME}\삭제.lnk" "$INSTDIR\Uninstall.exe"
-  CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}"
+  CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\PPC.ico" 0
 
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANY_NAME}" "DisplayName" "${APP_NAME}"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANY_NAME}" "DisplayVersion" "1.0.0"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANY_NAME}" "DisplayVersion" "1.0.1"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANY_NAME}" "Publisher" "${PUBLISHER_NAME}"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANY_NAME}" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANY_NAME}" "UninstallString" "$INSTDIR\Uninstall.exe"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANY_NAME}" "DisplayIcon" "$INSTDIR\PPC.ico"
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANY_NAME}" "NoModify" 1
   WriteRegDWORD HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANY_NAME}" "NoRepair" 1
 SectionEnd
@@ -73,6 +76,7 @@ skipUserDataDelete:
   RMDir "$SMPROGRAMS\${APP_NAME}"
 
   Delete "$INSTDIR\${APP_EXE}"
+  Delete "$INSTDIR\PPC.ico"
   Delete "$INSTDIR\Uninstall.exe"
   RMDir "$INSTDIR"
 

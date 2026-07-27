@@ -93,7 +93,8 @@ dist\PPCResearchHelperSetup.exe
 설치 프로그램 정보:
 
 - 이름: `PPC 조사연구 도우미`
-- 게시자: `AI`
+- 버전: `1.0.1`
+- 게시자: `전북은행 AI혁신부`
 - 설치 경로: `%LOCALAPPDATA%\Programs\PPCResearchHelper`
 - 설치 시 `ppc_report_template.docx`를 `%LOCALAPPDATA%\PPCResearchAutomation\resources`에 반영합니다.
 

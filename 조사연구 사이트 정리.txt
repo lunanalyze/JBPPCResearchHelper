@@ -1,0 +1,39 @@
+[캄보디아]
+1) 캄보디아 인사이트(https://thecaminsight.com/)
+    - 경제/금융 탭 -> 1. 캄보디아 금융/경제
+        - 경제 탭: (https://thecaminsight.com/economy)
+        - 금융 탭: (https://thecaminsight.com/finance)
+    - 정치/사회 탭 -> 2. 캄보디아 정치/사회
+        - 정치 탭: (https://thecaminsight.com/politics)
+        - 사회 탭: (https://thecaminsight.com/society)
+2) 캄푸치아 신문(http://www.camnews.kr/main/index.html)
+    - 경제 탭 -> 1. 캄보디아 금융/경제
+        - 경제 탭: (http://camnews.kr/news/index.html?section=1)
+    - 정치/사회 탭 -> 2. 캄보디아 정치/사회
+        - 정치 탭: (http://camnews.kr/news/index.html?section=2)
+        - 사회 탭: (http://camnews.kr/news/index.html?section=9)
+3) Khmer Times(https://www.khmertimeskh.com/)
+    - National 탭에서 내용 확인 후 1, 2번으로 분류
+        - National 탭: (https://www.khmertimeskh.com/category/national/)
+4) Phnom Penh Post(https://phnompenhpost.com/)
+    - National 탭에서 내용 확인 후 1, 2번으로 분류
+        - National 탭: (https://phnompenhpost.com/category/national/)
+
+[베트남]
+5) 베트남 코리아 타임즈(https://www.vietnamkoreatimes.com/)
+    - 세계공급망 / 베트남 한걸음 더 / 현지속살 탭에서 내용 확인 후 3. 베트남 금융/경제, 4. 베트남 정치/사회 로 분류
+        - 세계공급망 탭: (https://www.vietnamkoreatimes.com/news/articleList.html?sc_section_code=S1N2&view_type=sm)
+        - 베트남 한걸음 더 탭: (https://www.vietnamkoreatimes.com/news/articleList.html?sc_section_code=S1N7&view_type=sm)
+        - 현지속살 탭: (https://www.vietnamkoreatimes.com/news/articleList.html?sc_section_code=S1N3&view_type=sm)
+6) 시티타임즈(https://www.citytimes.co.kr/)
+    - 베트남★ 탭 - 최신 탭에서 내용 확인 후 3, 4번으로 분류
+        - 최신 탭: (https://www.citytimes.co.kr/news/articleList.html?sc_section_code=S1N8&view_type=sm)
+7) 인사이드비나(https://www.insidevina.com/)
+    - 경제/금융·부동산 탭 -> 1번으로 분류
+        - 경제 탭: (https://www.insidevina.com/news/articleList.html?sc_section_code=S1N6&view_type=sm)
+        - 금융·부동산 탭: (https://www.insidevina.com/news/articleList.html?sc_section_code=S1N12&view_type=sm)
+    - 정치, 사회·문화 탭 -> 2번으로 분류
+        - 정치 탭: (https://www.insidevina.com/news/articleList.html?sc_section_code=S1N5&view_type=sm)
+        - 사회·문화 탭: (https://www.insidevina.com/news/articleList.html?sc_section_code=S1N9&view_type=sm)
+
+* 3) ~ 6)의 경우 내용 확인한 다음에 분류가 되어야 함.

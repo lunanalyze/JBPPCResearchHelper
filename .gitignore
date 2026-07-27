@@ -1,0 +1,14 @@
+# 빌드 산출물 (릴리스 페이지로 배포)
+dist/
+build/
+*.spec
+
+# 로컬 실행 흔적
+.tmp_localappdata/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
