@@ -5,18 +5,24 @@ InstallDir "$LOCALAPPDATA\Programs\PPCResearchHelper"
 RequestExecutionLevel user
 Icon "setup_icon.ico"
 
+; 버전의 단일 원본은 updater.py 의 APP_VERSION 이다. build_installer.ps1 이 거기서 읽어
+; /DAPP_VERSION=... 으로 넘긴다. 직접 makensis 를 돌릴 때를 위한 폴백만 아래에 둔다.
+!ifndef APP_VERSION
+  !define APP_VERSION "1.0.2"
+!endif
+
 !define APP_EXE "PPCResearchHelper.exe"
 !define APP_NAME "PPC 조사연구 도우미"
 !define COMPANY_NAME "PPCResearchHelper"
 !define PUBLISHER_NAME "전북은행 AI혁신부"
 !define APP_DATA_DIR "$LOCALAPPDATA\PPCResearchAutomation"
 
-VIProductVersion "1.0.1.0"
+VIProductVersion "${APP_VERSION}.0"
 VIAddVersionKey /LANG=1042 "ProductName" "${APP_NAME}"
 VIAddVersionKey /LANG=1042 "CompanyName" "${PUBLISHER_NAME}"
 VIAddVersionKey /LANG=1042 "FileDescription" "${APP_NAME} 설치 프로그램"
-VIAddVersionKey /LANG=1042 "FileVersion" "1.0.1"
-VIAddVersionKey /LANG=1042 "ProductVersion" "1.0.1"
+VIAddVersionKey /LANG=1042 "FileVersion" "${APP_VERSION}"
+VIAddVersionKey /LANG=1042 "ProductVersion" "${APP_VERSION}"
 VIAddVersionKey /LANG=1042 "LegalCopyright" "${PUBLISHER_NAME}"
 
 Page directory
@@ -53,7 +59,7 @@ Section "Install"
   CreateShortcut "$DESKTOP\${APP_NAME}.lnk" "$INSTDIR\${APP_EXE}" "" "$INSTDIR\PPC.ico" 0
 
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANY_NAME}" "DisplayName" "${APP_NAME}"
-  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANY_NAME}" "DisplayVersion" "1.0.1"
+  WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANY_NAME}" "DisplayVersion" "${APP_VERSION}"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANY_NAME}" "Publisher" "${PUBLISHER_NAME}"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANY_NAME}" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "Software\Microsoft\Windows\CurrentVersion\Uninstall\${COMPANY_NAME}" "UninstallString" "$INSTDIR\Uninstall.exe"
